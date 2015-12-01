@@ -1,3 +1,5 @@
+clear all; close all; clc;
+
 %%================================================================
 %% Step 0a: Load data
 %  Here we provide the code to load natural image data into x.
@@ -15,6 +17,9 @@ display_network(x(:,randsel));
 %  You can make use of the mean and repmat/bsxfun functions.
 
 % -------------------- YOUR CODE HERE -------------------- 
+avg = mean(x,1);
+x = x - repmat(avg, [size(x,1),1]);
+
 
 %%================================================================
 %% Step 1a: Implement PCA to obtain xRot
@@ -23,8 +28,11 @@ display_network(x(:,randsel));
 
 
 % -------------------- YOUR CODE HERE -------------------- 
-xRot = zeros(size(x)); % You need to compute this
+% xRot = zeros(size(x)); % You need to compute this
 
+sigma = x * x' / size(x,2);
+[U, S, V] = svd(sigma);
+xRot = U' * x;
 
 %%================================================================
 %% Step 1b: Check your implementation of PCA
@@ -36,7 +44,8 @@ xRot = zeros(size(x)); % You need to compute this
 %  diagonal (non-zero entries) against a blue background (zero entries).
 
 % -------------------- YOUR CODE HERE -------------------- 
-covar = zeros(size(x, 1)); % You need to compute this
+% covar = zeros(size(x, 1)); % You need to compute this
+covar = cov(xRot');
 
 % Visualise the covariance matrix. You should see a line across the
 % diagonal against a blue background.
@@ -49,7 +58,10 @@ imagesc(covar);
 %  to retain at least 99% of the variance.
 
 % -------------------- YOUR CODE HERE -------------------- 
-k = 0; % Set k accordingly
+% k = 0; % Set k accordingly
+sums = cumsum(diag(S));
+sums = sums/sums(end);
+k = find(sums>0.99, 1);
 
 
 %%================================================================
@@ -68,6 +80,9 @@ k = 0; % Set k accordingly
 
 % -------------------- YOUR CODE HERE -------------------- 
 xHat = zeros(size(x));  % You need to compute this
+xWave = U(:,1:k)' * x;
+xHat(1:k,:) = xWave;
+xHat = U * xHat;
 
 
 % Visualise the data, and compare it to the raw data
@@ -85,8 +100,14 @@ display_network(x(:,randsel));
 %  Implement PCA with whitening and regularisation to produce the matrix
 %  xPCAWhite. 
 
-epsilon = 0.1;
-xPCAWhite = zeros(size(x));
+epsilons = [1, 0.1, 0.01];
+
+
+for i = 1:3
+epsilon = epsilons(i);
+% xPCAWhite = zeros(size(x));
+xPCAWhite = diag(1./sqrt(diag(S) + epsilon)) * xRot;
+covar = cov(xPCAWhite');
 
 % -------------------- YOUR CODE HERE -------------------- 
 
@@ -119,13 +140,16 @@ imagesc(covar);
 %  Visualise the data and compare it to the raw data. You should observe
 %  that whitening results in, among other things, enhanced edges.
 
-xZCAWhite = zeros(size(x));
+% xZCAWhite = zeros(size(x));
+xZCAWhite = U * xPCAWhite;
 
 % -------------------- YOUR CODE HERE -------------------- 
 
 % Visualise the data, and compare it to the raw data.
 % You should observe that the whitened images have enhanced edges.
-figure('name','ZCA whitened images');
+figure('name',['ZCA whitened images with epsilon=',num2str(epsilon)]);
 display_network(xZCAWhite(:,randsel));
 figure('name','Raw images');
 display_network(x(:,randsel));
+
+end
